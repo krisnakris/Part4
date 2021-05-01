@@ -1,27 +1,27 @@
 const Blog = require('../models/blog');
 
 class BlogController {
-  static getAllBlogs (req, res, next) {
+  static getAllBlogs(req, res, next) {
     Blog
       .find({})
-      .then(blogs => {
+      .then((blogs) => {
         res.json(blogs);
       })
-      .catch(err => {
+      .catch((err) => {
         next(err);
-      })
-    }
+      });
+  }
 
-  static postBlog (req, res, next) {
+  static postBlog(req, res, next) {
     const blog = new Blog(req.body);
     blog
       .save()
-      .then(result => {
+      .then((result) => {
         res.status(201).json(result);
       })
-      .catch(error => {
+      .catch((error) => {
         next(error);
-      })
+      });
   }
 }
 
