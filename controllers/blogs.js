@@ -1,5 +1,12 @@
 const Blog = require('../models/blog');
-const User = require('../models/user');
+
+// const getTokenFrom = (request) => {
+//   const authorization = request.get('authorization');
+//   if (authorization && authorization.toLowerCase().startsWith('bearer')) {
+//     return authorization.substring(7);
+//   }
+//   return null;
+// };
 
 class BlogController {
   static async getAllBlogs(req, res) {
@@ -65,13 +72,15 @@ class BlogController {
     //   next(error);
     // }
 
-    const { body } = req;
+    const { body, user } = req;
 
-    if (!body.user) {
-      res.status(400).json({ error: 'user missing' });
-    }
+    // const token = getTokenFrom(req);
+    // const decodedToken = jwt.verify(req.token, process.env.SECRET);
+    // if (!req.token || !decodedToken) {
+    //   res.status(401).json({ error: 'token missing or invalid' });
+    // }
 
-    const user = await User.findById(body.user);
+    // const user = await User.findById(decodedToken.id);
 
     const blog = new Blog({
       title: body.title,
@@ -96,9 +105,16 @@ class BlogController {
     // } catch (error) {
     //   next(error);
     // }
+    const { user } = req;
+    const blog = await Blog.findById(req.params.id);
 
-    await Blog.findByIdAndDelete(req.params.id);
-    res.status(204).end();
+    // eslint-disable-next-line no-underscore-dangle
+    if (user._id.toString() === blog.user.toString()) {
+      await Blog.findByIdAndDelete(req.params.id);
+      res.status(204).end();
+    }
+    // await Blog.findByIdAndDelete(req.params.id);
+    res.status(401).json({ error: 'Unauthorize' });
   }
 
   static async updateBlogs(req, res) {
