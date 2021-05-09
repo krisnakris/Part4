@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 const mongoose = require('mongoose');
 const supertest = require('supertest');
 const bcrypt = require('bcrypt');
@@ -6,27 +7,44 @@ const Blog = require('../models/blog');
 const User = require('../models/user');
 const helper = require('./test_helper');
 
-let userId = null;
-beforeEach(async () => {
-  await Blog.deleteMany({});
-  await Blog.insertMany(helper.initialBlogs);
-  // let blogObject = new Blog(helper.initialBlogs[0]);
-  // await blogObject.save();
-  // blogObject = new Blog(helper.initialBlogs[1]);
-  // await blogObject.save();
-  await User.deleteMany({});
+const api = supertest(app);
+let token = null;
+let blogInitialSetup;
 
+beforeAll(async () => {
+  await User.deleteMany({});
   const passwordHash = await bcrypt.hash('sekret', 10);
   const user = new User({
     username: 'root', passwordHash, blogs: [], name: 'cepot',
   });
   // eslint-disable-next-line no-underscore-dangle
-  userId = user._id;
-
   await user.save();
+
+  const userLogin = {
+    username: 'root',
+    password: 'sekret',
+  };
+
+  const response = await api.post('/api/login').send(userLogin);
+  token = `bearer ${response.body.token}`;
 });
 
-const api = supertest(app);
+beforeEach(async () => {
+  await Blog.deleteMany({});
+  await Blog.insertMany(helper.initialBlogs);
+
+  const newBlog = {
+    title: 'Security Analysis 2',
+    author: 'Benjamin Graham',
+    url: 'https://google.com',
+    likes: '10',
+  };
+
+  blogInitialSetup = await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .set({ Authorization: token });
+});
 
 describe('there is some initial blogs saved', () => {
   test('blogs are returned as json', async () => {
@@ -39,7 +57,7 @@ describe('there is some initial blogs saved', () => {
   test('all initial blogs are returned', async () => {
     const response = await api.get('/api/blogs');
 
-    expect(response.body).toHaveLength(helper.initialBlogs.length);
+    expect(response.body).toHaveLength(helper.initialBlogs.length + 1);
   });
 
   test('a spesific note is within the returned notes', async () => {
@@ -86,18 +104,18 @@ describe('addition of a blog', () => {
       author: 'Benjamin Graham',
       url: 'https://google.com',
       likes: '10',
-      user: userId,
     };
 
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ Authorization: token })
       .expect(201)
       .expect('Content-Type', /application\/json/);
 
     // const response = await api.get('/api/blogs');
     const blogAtEnd = await helper.blogsInDb();
-    expect(blogAtEnd).toHaveLength(helper.initialBlogs.length + 1);
+    expect(blogAtEnd).toHaveLength(helper.initialBlogs.length + 2);
 
     const title = blogAtEnd.map((blog) => blog.title);
     const author = blogAtEnd.map((blog) => blog.author);
@@ -115,12 +133,12 @@ describe('addition of a blog', () => {
       title: 'The Intelligent Investor',
       author: 'Benjamin Graham',
       url: 'https://google.com',
-      user: userId,
     };
 
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ Authorization: token })
       .expect(201)
       .expect('Content-Type', /application\/json/);
 
@@ -135,13 +153,26 @@ describe('addition of a blog', () => {
     const newBlog = {
       author: 'Benjamin Graham',
       likes: '10',
-      user: userId,
     };
 
     await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ Authorization: token })
       .expect(400)
+      .expect('Content-Type', /application\/json/);
+  });
+
+  test('authorization is not set, will return error 401 Unauthorize', async () => {
+    const newBlog = {
+      author: 'Benjamin Graham',
+      likes: '10',
+    };
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
       .expect('Content-Type', /application\/json/);
   });
 });
@@ -172,19 +203,20 @@ describe('updating a blog', () => {
 
 describe('deletion of a blog', () => {
   test('suceed with status code 204 if id is valid', async () => {
-    const blogAtStart = await helper.blogsInDb();
-    const blogToDelete = await blogAtStart[0];
+    const blogToDeleteId = blogInitialSetup.body.id;
 
     await api
-      .delete(`/api/blogs/${blogToDelete.id}`)
+      .delete(`/api/blogs/${blogToDeleteId}`)
+      .set({ Authorization: token })
       .expect(204);
+  });
 
-    const blogAtEnd = await helper.blogsInDb();
+  test('Unauthorize delete will return status code 401 if not specify token', async () => {
+    const blogToDeleteId = blogInitialSetup.body.id;
 
-    expect(blogAtEnd).toHaveLength(helper.initialBlogs.length - 1);
-
-    const title = blogAtEnd.map((blog) => blog.author);
-    expect(title).not.toContain(blogToDelete.author);
+    await api
+      .delete(`/api/blogs/${blogToDeleteId}`)
+      .expect(401);
   });
 });
 
