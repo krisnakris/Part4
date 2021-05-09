@@ -3,7 +3,9 @@ const User = require('../models/user');
 
 class UserController {
   static async getAllUsers(request, response) {
-    const user = await User.find({});
+    const user = await User.find({}).populate('blogs', {
+      likes: true, title: true, author: true, url: true,
+    });
     response.json(user);
   }
 

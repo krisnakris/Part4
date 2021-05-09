@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
 const supertest = require('supertest');
+const bcrypt = require('bcrypt');
 const app = require('../app');
 const Blog = require('../models/blog');
+const User = require('../models/user');
 const helper = require('./test_helper');
 
+let userId = null;
 beforeEach(async () => {
   await Blog.deleteMany({});
   await Blog.insertMany(helper.initialBlogs);
@@ -11,6 +14,16 @@ beforeEach(async () => {
   // await blogObject.save();
   // blogObject = new Blog(helper.initialBlogs[1]);
   // await blogObject.save();
+  await User.deleteMany({});
+
+  const passwordHash = await bcrypt.hash('sekret', 10);
+  const user = new User({
+    username: 'root', passwordHash, blogs: [], name: 'cepot',
+  });
+  // eslint-disable-next-line no-underscore-dangle
+  userId = user._id;
+
+  await user.save();
 });
 
 const api = supertest(app);
@@ -73,6 +86,7 @@ describe('addition of a blog', () => {
       author: 'Benjamin Graham',
       url: 'https://google.com',
       likes: '10',
+      user: userId,
     };
 
     await api
@@ -101,6 +115,7 @@ describe('addition of a blog', () => {
       title: 'The Intelligent Investor',
       author: 'Benjamin Graham',
       url: 'https://google.com',
+      user: userId,
     };
 
     await api
@@ -120,6 +135,7 @@ describe('addition of a blog', () => {
     const newBlog = {
       author: 'Benjamin Graham',
       likes: '10',
+      user: userId,
     };
 
     await api

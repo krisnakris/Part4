@@ -1,4 +1,5 @@
 const Blog = require('../models/blog');
+const User = require('../models/user');
 
 class BlogController {
   static async getAllBlogs(req, res) {
@@ -18,7 +19,8 @@ class BlogController {
     //   next(error);
     // }
 
-    const blogs = await Blog.find({});
+    const blogs = await Blog.find({}).populate('user', { username: true, name: true });
+
     res.json(blogs);
   }
 
@@ -63,9 +65,28 @@ class BlogController {
     //   next(error);
     // }
 
-    const blog = await new Blog(req.body).save();
+    const { body } = req;
 
-    res.status(201).json(blog);
+    if (!body.user) {
+      res.status(400).json({ error: 'user missing' });
+    }
+
+    const user = await User.findById(body.user);
+
+    const blog = new Blog({
+      title: body.title,
+      author: body.author,
+      likes: body.likes,
+      url: body.url,
+      // eslint-disable-next-line no-underscore-dangle
+      user: user._id,
+    });
+
+    const savedBlog = await blog.save();
+    // eslint-disable-next-line no-underscore-dangle
+    user.blogs = user.blogs.concat(savedBlog._id);
+    await user.save();
+    res.status(201).json(savedBlog);
   }
 
   static async deleteBlogs(req, res) {
