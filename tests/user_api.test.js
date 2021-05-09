@@ -59,6 +59,38 @@ describe('when there is initially one user in db', () => {
     const usersAtEnd = await helper.usersInDb();
     expect(usersAtEnd).toHaveLength(usersAtStart.length);
   });
+
+  test('invalid add user for username, and get suitable status code and error message', async () => {
+    const newInvalidUser = {
+      username: 'ab',
+      name: 'kris',
+      password: '123',
+    };
+
+    const result = await api
+      .post('/api/users')
+      .send(newInvalidUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/);
+
+    expect(result.body.error).toContain('is shorter than the minimum allowed length (3)');
+  });
+
+  test('invalid add user for password, and get suitable status code and error message', async () => {
+    const newInvalidUser = {
+      username: 'abc',
+      name: 'kris',
+      password: '12',
+    };
+
+    const result = await api
+      .post('/api/users')
+      .send(newInvalidUser)
+      .expect(400)
+      .expect('Content-Type', /application\/json/);
+
+    expect(result.body.error).toContain('password must be at least 3 char');
+  });
 });
 
 afterAll(() => {

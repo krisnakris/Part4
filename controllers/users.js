@@ -10,6 +10,16 @@ class UserController {
   static async postUsers(request, response) {
     const { body } = request;
 
+    if (body.password && body.password.length < 3) {
+      response.status(400).json({
+        error: 'password must be at least 3 char',
+      });
+    } else if (!body.password) {
+      response.status(401).jseon({
+        error: 'password cannot be null',
+      });
+    }
+
     const saltRound = 10;
     const passwordHash = await bcrypt.hash(body.password, saltRound);
 
@@ -20,7 +30,7 @@ class UserController {
     });
 
     const savedUser = await user.save();
-    response.json(savedUser);
+    response.send(savedUser);
   }
 }
 
