@@ -137,9 +137,10 @@ class BlogController {
       title: body.title,
       author: body.author,
       url: body.url,
+      likes: body.likes,
     };
 
-    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, newBlog);
+    const updatedBlog = await Blog.findByIdAndUpdate(req.params.id, newBlog, { new: true });
     res.json(updatedBlog);
   }
 }
